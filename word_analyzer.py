@@ -6,75 +6,88 @@ from nltk import FreqDist
 from nltk.stem import WordNetLemmatizer
 import pymorphy3
 
-# Загрузка необходимых ресурсов nltk без вывода результатов
-nltk.download('punkt', quiet=True)
-nltk.download('stopwords', quiet=True)
-nltk.download('wordnet', quiet=True)
-nltk.download('omw-1.4', quiet=True)
+def download_nltk_resources():
+    """
+    Загружает необходимые ресурсы nltk без вывода логов
+    """
+    nltk.download('punkt', quiet=True)
+    nltk.download('stopwords', quiet=True)
+    nltk.download('wordnet', quiet=True)
+    nltk.download('omw-1.4', quiet=True)
 
-# Ввод данных
-filename = input("Введите название текстового файла: ")
-language = input("Выберите язык (en/ru): ").lower().strip()
+def read_text_from_file(filename):
+    """
+    Читает текст из файла
 
-# Обработка ввода выбора языка (если не en, ru - конец программы)
-if language not in ['en','ru']:
-    print("Ошибка: неправильный выбор языка")
-    exit()
+    Args:
+        filename (str): название файла для чтения
 
-# Основаной анализ
-try:
-    # Чтение файла
+    Returns:
+        str: текст из файла
+
+    Errors:
+        FileNotFoundError: если файл не найден
+    """
     with open(filename, 'r', encoding='utf-8') as file:
-        text = file.read()
+        return file.read()
 
-    # Токенизация с обработкой регистров
+def tokenize_and_filter(text, language):
+    """
+    Токенизирует текст, приводит к нижнему регистру и удаляет стоп-слова
+
+    Args:
+        text (str): исхооный текст
+        language (str): язык текста ('en' или 'ru')
+
+    Returns:
+        list: отфильтрованные токены
+    """
     word_tokens = [word.lower() for word in word_tokenize(text) if word.isalpha()]
 
-    # Определяем стоп-слова (добавил стоп-слова в русский)
     if language == 'ru':
         stop_words = set(stopwords.words('russian'))
         stop_words.update(['это', 'свой', 'свои'])
     else:
         stop_words = set(stopwords.words('english'))
 
-    # Удаляем стоп-слова из списка токенов
-    filtered_tokens = [word for word in word_tokens if word not in stop_words]
+    return [word for word in word_tokens if word not in stop_words]
 
-    # Русская обработка с использованием pymorphy для корректной лемматизации
+def lemmatize_words(filtered_tokens, language):
+    """
+    Лемматизирует список токенов в зависимости от языка
+
+    Args:
+        filtered_tokens (list): список отфильтрованных токенов
+        language (str): язык текста ('en' или 'ru')
+
+    Returns:
+        list: лемматизированные слова
+    """
     if language == 'ru':
-        # morph - анализатор
         morph = pymorphy3.MorphAnalyzer()
         lemmatized_words = []
-
-        # Лемматизация на русском
         for word in filtered_tokens:
             try:
-                # Агрумент 0 - выбираем самый вероятный разбор
                 parsed = morph.parse(word)[0]
-                # normal_form - получаем начальную форму слова
-                normal_form = parsed.normal_form
-                # Добавляем в список лемматизированных слов
-                lemmatized_words.append(normal_form)
-
+                lemmatized_words.append(parsed.normal_form)
             except:
-                # Вставляет изначальное слово, если слово незнакомо(нет в словаре pymorphy)
                 lemmatized_words.append(word)
-
-    # Английская обработка (лемматизация без доп. библиотеки)
+        return lemmatized_words
     else:
-        # Создаем лемматизатор lemmatizer
         lemmatizer = WordNetLemmatizer()
-        # Получаем начальные формы слов
-        lemmatized_words = [lemmatizer.lemmatize(word) for word in filtered_tokens]
+        return [lemmatizer.lemmatize(word) for word in filtered_tokens]
 
-    # Подсчет частот (freqDist = [('Слово', кол-во)] - по уменьшению)
-    fdist = FreqDist(lemmatized_words)
+def plot_top_words(fdist, language):
+    """
+    Строит столбчатую диаграмму топ-5 слов
 
-    # Выбираем топ-5 слов и их частоты
+    Args:
+        fdist (FreqDist): распределение частот слов.
+        language (str): язык текста ('en' или 'ru').
+    """
     top_words = [word for word, count in fdist.most_common(5)]
     top_counts = [count for word, count in fdist.most_common(5)]
 
-    # Визуализация со столбчатой диаграммой и точными значениями столбцов
     bars = plt.bar(top_words, top_counts, color="green")
     plt.bar_label(bars, labels=top_counts, fontsize=10, padding=-15, color="white")
     plt.xlabel("Слова")
@@ -82,7 +95,42 @@ try:
     plt.title(f"Топ-5 слов ({'русский' if language == 'ru' else 'английский'})")
     plt.show()
 
-# Ошибки с открытием текстового файла
-except FileNotFoundError:
-    print(f"Ошибка: файл '{filename}' не найден!")
+def process_text(filename, language):
+    """
+    Обрабатывает текст из файла: читает, токенизирует, лемматизирует и строит график топ-5 слов
 
+    Args:
+        filename (str): название текстового файла
+        language (str): язык текста ('en' или 'ru')
+
+    Errors:
+        FileNotFoundError: если файл не найден
+    """
+    try:
+        text = read_text_from_file(filename)
+        filtered_tokens = tokenize_and_filter(text, language)
+        lemmatized_words = lemmatize_words(filtered_tokens, language)
+        fdist = FreqDist(lemmatized_words)
+        plot_top_words(fdist, language)
+    except FileNotFoundError:
+        print(f"Ошибка: файл '{filename}' не найден!")
+        raise
+
+
+def main():
+    """
+    Основная функция для запуска анализа текста.
+    """
+    download_nltk_resources()
+
+    filename = input("Введите название текстового файла: ")
+    language = input("Выберите язык (en/ru): ").lower().strip()
+
+    if language not in ['en', 'ru']:
+        print("Ошибка: неправильный выбор языка")
+        return
+
+    process_text(filename, language)
+
+if __name__ == "__main__":
+    main()
