@@ -6,6 +6,14 @@ from nltk import FreqDist
 from nltk.stem import WordNetLemmatizer
 import pymorphy3
 
+RUSSIAN_EXTRA_STOPWORDS = ['это', 'свой', 'свои', 'весь']
+
+LANGUAGE_EN = 'en'
+LANGUAGE_RU = 'ru'
+SUPPORTED_LANGUAGES = [LANGUAGE_EN, LANGUAGE_RU]
+
+DEFAULT_ENCODING = 'utf-8'
+
 def download_nltk_resources():
     """
     Загружает необходимые ресурсы nltk без вывода логов
@@ -28,8 +36,15 @@ def read_text_from_file(filename):
     Errors:
         FileNotFoundError: если файл не найден
     """
-    with open(filename, 'r', encoding='utf-8') as file:
-        return file.read()
+    try:
+        with open(filename, 'r', encoding=DEFAULT_ENCODING) as file:
+            return file.read()
+    except FileNotFoundError:
+        print(f"Ошибка: файл '{filename}' не найден!")
+        raise
+    except Exception as e:
+        print(f"Неожиданная ошибка при чтении файла: {e}")
+        raise
 
 def tokenize_and_filter(text, language):
     """
@@ -44,9 +59,9 @@ def tokenize_and_filter(text, language):
     """
     word_tokens = [word.lower() for word in word_tokenize(text) if word.isalpha()]
 
-    if language == 'ru':
+    if language == LANGUAGE_RU:
         stop_words = set(stopwords.words('russian'))
-        stop_words.update(['это', 'свой', 'свои'])
+        stop_words.update(RUSSIAN_EXTRA_STOPWORDS)
     else:
         stop_words = set(stopwords.words('english'))
 
@@ -63,7 +78,7 @@ def lemmatize_words(filtered_tokens, language):
     Returns:
         list: лемматизированные слова
     """
-    if language == 'ru':
+    if language == LANGUAGE_RU:
         morph = pymorphy3.MorphAnalyzer()
         lemmatized_words = []
         for word in filtered_tokens:
@@ -92,7 +107,7 @@ def plot_top_words(fdist, language):
     plt.bar_label(bars, labels=top_counts, fontsize=10, padding=-15, color="white")
     plt.xlabel("Слова")
     plt.ylabel("Частота")
-    plt.title(f"Топ-5 слов ({'русский' if language == 'ru' else 'английский'})")
+    plt.title(f"Топ-5 слов ({'русский' if language == LANGUAGE_RU else 'английский'})")
     plt.show()
 
 def process_text(filename, language):
@@ -113,7 +128,10 @@ def process_text(filename, language):
         fdist = FreqDist(lemmatized_words)
         plot_top_words(fdist, language)
     except FileNotFoundError:
-        print(f"Ошибка: файл '{filename}' не найден!")
+        print(f"Ошибка: файл '{filename}' не найден.")
+        raise
+    except Exception as e:
+        print(f"Непредвиденная ошибка при обработке текста: {e}")
         raise
 
 
@@ -126,7 +144,7 @@ def main():
     filename = input("Введите название текстового файла: ")
     language = input("Выберите язык (en/ru): ").lower().strip()
 
-    if language not in ['en', 'ru']:
+    if language not in SUPPORTED_LANGUAGES:
         print("Ошибка: неправильный выбор языка")
         return
 
