@@ -1,3 +1,4 @@
+import argparse
 import nltk
 import matplotlib.pyplot as plt
 from nltk.tokenize import word_tokenize
@@ -141,8 +142,13 @@ def main():
     """
     download_nltk_resources()
 
-    filename = input("Введите название текстового файла: ")
-    language = input("Выберите язык (en/ru): ").lower().strip()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("file", type=str)
+    parser.add_argument("lang", type=str)
+    args = parser.parse_args()
+
+    filename = args.file
+    language = args.lang
 
     if language not in SUPPORTED_LANGUAGES:
         print("Ошибка: неправильный выбор языка")
